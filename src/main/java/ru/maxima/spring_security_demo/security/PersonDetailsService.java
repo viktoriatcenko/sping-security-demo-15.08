@@ -2,6 +2,7 @@ package ru.maxima.spring_security_demo.security;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import ru.maxima.spring_security_demo.model.Person;
@@ -21,7 +22,7 @@ public class PersonDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) {
-        Optional<Person> person = peopleRepository.findByUserName(username);
+        Optional<Person> person = peopleRepository.findByUsername(username);
 
         if (person.isEmpty()) {
             throw new UsernameNotFoundException("Repository has not found user with username: " + username);
