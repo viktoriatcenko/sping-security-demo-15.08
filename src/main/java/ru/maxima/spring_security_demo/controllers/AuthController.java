@@ -1,6 +1,6 @@
 package ru.maxima.spring_security_demo.controllers;
 
-import jakarta.validation.Valid;
+
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -49,6 +49,14 @@ public class AuthController {
         peopleService.savePerson(person);
 
         return "redirect:/auth/login";
+    }
+
+    @GetMapping("/admin")
+    public String getAdminPage() {
+
+        peopleService.doAdminSomething();
+
+        return "auth/admin";
     }
 
 
