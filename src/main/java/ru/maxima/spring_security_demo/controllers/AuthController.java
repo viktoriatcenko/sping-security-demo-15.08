@@ -1,63 +1,91 @@
 package ru.maxima.spring_security_demo.controllers;
 
 
-import org.springframework.stereotype.Controller;
+import jakarta.validation.Valid;
+import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
+import ru.maxima.spring_security_demo.dto.PersonDTO;
 import ru.maxima.spring_security_demo.model.Person;
+import ru.maxima.spring_security_demo.security.PersonDetails;
 import ru.maxima.spring_security_demo.service.PeopleService;
+import ru.maxima.spring_security_demo.util.JWTUtil;
 import ru.maxima.spring_security_demo.validation.PersonValidator;
 
-@Controller
-@RequestMapping("/auth")
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/v1")
 public class AuthController {
 
-
-    private final PersonValidator personValidator;
     private final PeopleService peopleService;
+    private final JWTUtil jwtUtil;
+    private final ModelMapper mapper;
+    private final PersonValidator personValidator;
+    private final AuthenticationManager authenticationManager;
 
-    public AuthController(PersonValidator personValidator, PeopleService peopleService) {
-        this.personValidator = personValidator;
+
+    @Autowired
+    public AuthController(PeopleService peopleService, JWTUtil jwtUtil, ModelMapper mapper, PersonValidator personValidator, AuthenticationManager authenticationManager) {
         this.peopleService = peopleService;
+        this.jwtUtil = jwtUtil;
+        this.mapper = mapper;
+        this.personValidator = personValidator;
+        this.authenticationManager = authenticationManager;
     }
 
-    @GetMapping("/login")
-    public String login() {
-        return "auth/login";
-    }
+    @PostMapping("/login")
+    public Map<String, String> login(@RequestBody PersonDTO authDTO) {
 
-    @GetMapping("/registration")
-    public String registration(Model model) {
-        model.addAttribute("person", new Person());
-        return "auth/registration";
+        UsernamePasswordAuthenticationToken userToken =
+                new UsernamePasswordAuthenticationToken(
+                        authDTO.getUsername(), authDTO.getPassword()
+                );
+
+        try {
+            authenticationManager.authenticate(userToken);
+        } catch (Exception e) {
+            return Map.of("error", "incorrect login or password");
+        }
+
+
+
+        String token = jwtUtil.generateToken(authDTO.getUsername());
+
+        return Map.of("jwt-token", token);
     }
 
     @PostMapping("/registration")
-    public String register(@ModelAttribute("person") Person person,
-                           BindingResult bindingResult) {
+    public Map<String, String> registration(@RequestBody @Valid  PersonDTO personDTO,
+                                            BindingResult bindingResult) {
+
+        Person person = peopleService.convertDTOToPerson(personDTO);
 
         personValidator.validate(person, bindingResult);
 
         if (bindingResult.hasErrors()) {
-            return "auth/registration";
+            return Map.of("message", "error body");
         }
 
         peopleService.savePerson(person);
 
-        return "redirect:/auth/login";
+        String token = jwtUtil.generateToken(person.getUsername());
+
+        return Map.of("jwt-token", token);
     }
 
-    @GetMapping("/admin")
-    public String getAdminPage() {
+    @GetMapping("/show")
+    public String showAuthenticatedUsers() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        PersonDetails principal = (PersonDetails) authentication.getPrincipal();
 
-        peopleService.doAdminSomething();
+        return principal.getUsername();
 
-        return "auth/admin";
     }
-
-
 }
