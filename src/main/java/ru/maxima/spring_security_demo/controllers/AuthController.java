@@ -70,7 +70,7 @@ public class AuthController {
         personValidator.validate(person, bindingResult);
 
         if (bindingResult.hasErrors()) {
-            return Map.of("message", "error body");
+            return Map.of("message", bindingResult.getAllErrors().get(0).getDefaultMessage());
         }
 
         peopleService.savePerson(person);
